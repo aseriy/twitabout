@@ -48,6 +48,15 @@ def dbFollow1Test() {
 }
 
 
+def dbCanUnfollowTest() {
+	println dbCanUnfollow(556650732)
+	println dbCanUnfollow(490098164)
+	
+	// non-existing one
+	println dbCanUnfollow(0)
+}
+
+
 def dbFollow2Test() {
 	def toFollow = [
 		[id: 1321960278, screen_name: 'aga_sumit', name: 'Sumit Agarwal'],
@@ -109,6 +118,11 @@ def dbAllFollowsTest() {
 
 def dbQueueLeadsBatchSizeTest() {
 	println dbQueueLeadsBatchSize()
+}
+
+
+def dbIdsToUnfollowTest() {
+	println dbIdsToUnfollow()
 }
 
 

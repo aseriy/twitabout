@@ -36,11 +36,15 @@ def queueUpLeadFollowers(max) {
 		return
 	}
 
+	def batchSize = dbQueueLeadsBatchSize()
+	println "batchSize: " + batchSize
+
 	def lead = twitter.lookupUsers(leadId).first()
 	println "Followers of " + lead.screenName
 
 	def nextCursor = -1
 	def idsToFollow = []
+
 	while (idsToFollow.nextCursor != 0) {
 		idsToFollow = twitter.getFollowersIDs(leadId, nextCursor)
 		//println idsToFollow.ids
@@ -50,9 +54,16 @@ def queueUpLeadFollowers(max) {
 			if (id != me.id) {
 				if (! dbQueuedUpToFollow(id)) {
 					def user = twitter.lookupUsers(id).first()
-					println "Queueing up " + user.screenName + " to be followed..."
-					dbQueueFollow(id, user.screenName, user.name)
-					if (--max == 0) {
+					if (dbQueueFollow(id, user.screenName, user.name)) {
+						println "Queueing up " + user.screenName + " to be followed..."
+						--max
+						--batchSize
+					} else {
+						println "${user.screenName} was followed & un-followed in the past." 
+					}
+
+					if (max == 0 || batchSize == 0) {
+						nextCursor = 0
 						break
 					}
 				}

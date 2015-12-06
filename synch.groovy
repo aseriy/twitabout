@@ -34,9 +34,11 @@ while (idsFriends.nextCursor != 0) {
 	nextCursor = idsFriends.nextCursor
 
 	for (id in idsFriends.ids) {
-		def user = twitter.lookupUsers(id).first()
-		println "Updating " + user.screenName
-		dbFollow(id, user.screenName, user.name)
+		if (!dbAlreadyFollowed(id)) {
+			def user = twitter.lookupUsers(id).first()
+			println "Updating " + user.screenName
+			dbFollow(id, user.screenName, user.name)
+		}
 	}
 
 }

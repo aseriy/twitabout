@@ -35,18 +35,31 @@ class common_db {
 						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
 
 		Statement stmt = conn.createStatement()
-		def sql = "INSERT INTO follow_log (id, screen_name"
-		if (name != null) {
-			sql = sql + ", name"
-		}
-		sql = sql + ") VALUES (" + id + ",\"" + screen_name + "\""
-		if (name != null) {
-			sql = sql + ",\"" + name + "\""
-		}
-		sql = sql + ")"
 
-		stmt.executeUpdate(sql)
+		// Return this to indicate wheather queuing up for follow was possible or not
+		def didIt = false
+
+		// Check if the Twitter is already in the DB. It's possible that we had followed/un-followed
+		// this user in the past. If we did, forego following again.
+		def sql = "SELECT id FROM follow_log WHERE id=${id}"
+		ResultSet rs = stmt.executeQuery(sql)
+		if (!rs.first()) {
+			sql = "INSERT INTO follow_log (id, screen_name"
+			if (name != null) {	
+				sql = sql + ", name"
+			}
+			sql = sql + ") VALUES (" + id + ",\"" + screen_name + "\""
+			if (name != null) {
+				sql = sql + ",\"" + name + "\""
+			}
+			sql = sql + ")"
+
+			stmt.executeUpdate(sql)
+			didIt = true
+		}
+
 		conn.close()
+		return didIt
 	}
 
 
@@ -103,6 +116,19 @@ class common_db {
 	}
 
 
+	def static dbUnfollow (id) {
+		Connection conn = DriverManager.getConnection(
+						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
+
+		Statement stmt = conn.createStatement()
+
+		def sql = "UPDATE follow_log SET unfollowed_on=now() WHERE id=" + id
+
+		stmt.executeUpdate(sql)
+		conn.close()
+	}
+
+
 	def static dbDeleteFollow(id) {
 		Connection conn = DriverManager.getConnection(
 						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
@@ -133,6 +159,24 @@ class common_db {
 	}
 
 
+	def static dbCanUnfollow(id) {
+		Connection conn = DriverManager.getConnection(
+						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
+
+		Statement stmt = conn.createStatement()
+		def sql = "SELECT persist FROM follow_log WHERE id = " + id
+		ResultSet rs = stmt.executeQuery(sql)
+
+		def persist = false
+		if (rs.first()) {
+			persist = !rs.getBoolean('persist')
+		}
+
+		conn.close()
+		return persist
+	}
+
+
 	def static dbIdsToFollow() {
 		Connection conn = DriverManager.getConnection(
 						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
@@ -157,6 +201,53 @@ class common_db {
 	}
 
 
+	def static dbUnfollowBatchSize() {
+		Connection conn = DriverManager.getConnection(
+						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
+
+		Statement stmt = conn.createStatement()
+
+		def sql = "SELECT value FROM limits WHERE param = 'unfollow_batch_size'"
+		ResultSet rs = stmt.executeQuery(sql)
+		rs.first()
+		def limit = rs.getInt('value')
+		
+		conn.close()
+		return limit
+	}
+
+	def static dbIdsToUnfollow() {
+		Connection conn = DriverManager.getConnection(
+						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
+
+		Statement stmt = conn.createStatement()
+
+		def idsToUnfollow = []
+
+		def sql = "SELECT value FROM limits WHERE param='days_before_unfollow'"
+		ResultSet rs = stmt.executeQuery(sql)
+		rs.first()
+		def retention = rs.getInt('value')
+
+		def today = new Date()		
+		def followedBefore = (today - retention).format("YYYY-MM-dd")
+		sql = "SELECT id FROM follow_log " +
+				"WHERE persist IS FALSE AND " +
+				"unfollowed_on IS NULL AND " +
+				"followed_on < '${followedBefore}' " +
+				"ORDER BY followed_on"
+
+		rs = stmt.executeQuery(sql)
+		rs.beforeFirst()
+		while (rs.next()) {
+			idsToUnfollow.add(rs.getLong('id'))
+		}
+
+		conn.close()
+		return idsToUnfollow
+	}
+
+
 	def static dbDailyFollowLimitReached() {
 		Connection conn = DriverManager.getConnection(
 						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
@@ -177,6 +268,35 @@ class common_db {
 
 		def retval
 		if (followedToday < dailyLimit)
+			retval = false
+		else
+			retval = true
+
+		conn.close()
+		return retval
+	}
+
+
+	def static dbDailyUnfollowLimitReached() {
+		Connection conn = DriverManager.getConnection(
+						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
+
+		Statement stmt = conn.createStatement()
+
+		def today = new Date()
+		def sql = "SELECT COUNT(*) FROM follow_log WHERE unfollowed_on >= '" + today.format("YYYY-MM-dd") + "'"
+
+		ResultSet rs = stmt.executeQuery(sql)
+		rs.first()
+		def unfollowedToday = rs.getLong('COUNT(*)')
+
+		sql = "SELECT value FROM limits WHERE param='max_daily_unfollows'"
+		rs = stmt.executeQuery(sql)
+		rs.first()
+		def dailyLimit = rs.getInt('value')
+
+		def retval
+		if (unfollowedToday < dailyLimit)
 			retval = false
 		else
 			retval = true
@@ -210,14 +330,13 @@ class common_db {
 
 		Statement stmt = conn.createStatement()
 
-		def sql = "SELECT value FROM limits WHERE param='queue_leads_batch_size'"
+		def sql = "SELECT value FROM limits WHERE param = 'queue_leads_batch_size'"
 		ResultSet rs = stmt.executeQuery(sql)
 		rs.first()
-
-		def value = rs.getLong('value')
+		def limit = rs.getInt('value')
+		
 		conn.close()
-
-		return value
+		return limit
 	}
 
 
