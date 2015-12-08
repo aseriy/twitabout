@@ -38,6 +38,7 @@ while (idsFriends.nextCursor != 0) {
 			def user = twitter.lookupUsers(id).first()
 			println "Updating " + user.screenName
 			dbFollow(id, user.screenName, user.name)
+			dbPersist(id)
 		}
 	}
 

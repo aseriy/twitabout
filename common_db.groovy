@@ -83,6 +83,18 @@ class common_db {
 	}
 
 
+	def static dbPersist (id) {
+		Connection conn = DriverManager.getConnection(
+						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
+
+		Statement stmt = conn.createStatement()
+
+		def sql = "UPDATE follow_log SET persist=TRUE WHERE id=${id}"
+		stmt.executeUpdate(sql)
+		conn.close()
+	}
+
+
 	def static dbFollow (id, screen_name, name = null) {
 		def sql = ''
 
