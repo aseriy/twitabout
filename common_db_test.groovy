@@ -1,6 +1,11 @@
 import static common_db.*
 
 
+def dbInitTest() {
+	dbInit()
+}
+
+
 def dbQueueFollowTest() {
 	def toQueue = [
 		[id: 297137315, screen_name: 'claudehanhart', name: 'Claude Hanhart'],

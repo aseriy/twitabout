@@ -6,14 +6,29 @@ import java.util.Date
 
 class common_db {
 
-	def static db_name = 'twitabout'
-	def static db_user = 'rational'
-	def static db_pass = 'Gr33nhat'
+	def static dbUrl = null //'jdbc:mysql://localhost/twitabout'
+	def static dbUser = null //'rational'
+	def static dbPassword = null //'Gr33nhat'
+
+
+	def static
+	dbInit() {
+		if (dbUrl == null || dbUser == null || dbPassword == null) {
+			File propFile = new File('db.properties')
+			def props = new Properties()
+			props.load(propFile.newDataInputStream())
+			def config = new ConfigSlurper().parse(props)
+			dbUrl = config.db.url
+			dbUser = config.db.user
+			dbPassword = config.db.password
+		}
+	}
 
 
 	def static dbAllFollows() {
+		dbInit()
 		Connection conn = DriverManager.getConnection(
-						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
 
 		Statement stmt = conn.createStatement()
 		def sql = "SELECT id FROM follow_log"
@@ -31,8 +46,9 @@ class common_db {
 
 
 	def static dbQueueFollow (id, screen_name, name = null) {
+		dbInit()
 		Connection conn = DriverManager.getConnection(
-						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
 
 		Statement stmt = conn.createStatement()
 
@@ -64,8 +80,9 @@ class common_db {
 
 
 	def static dbQueuedUpToFollow (id) {
+		dbInit()
 		Connection conn = DriverManager.getConnection(
-						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
 
 		Statement stmt = conn.createStatement()
 		def sql = "SELECT * FROM follow_log WHERE id = " + id
@@ -84,8 +101,9 @@ class common_db {
 
 
 	def static dbPersist (id) {
+		dbInit()
 		Connection conn = DriverManager.getConnection(
-						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
 
 		Statement stmt = conn.createStatement()
 
@@ -96,6 +114,7 @@ class common_db {
 
 
 	def static dbFollow (id, screen_name, name = null) {
+		dbInit()
 		def sql = ''
 
 		// Check if already queued up to be followed
@@ -120,7 +139,7 @@ class common_db {
 		}
 
 		Connection conn = DriverManager.getConnection(
-						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
 
 		Statement stmt = conn.createStatement()
 		stmt.executeUpdate(sql)
@@ -129,8 +148,9 @@ class common_db {
 
 
 	def static dbUnfollow (id) {
+		dbInit()
 		Connection conn = DriverManager.getConnection(
-						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
 
 		Statement stmt = conn.createStatement()
 
@@ -142,8 +162,9 @@ class common_db {
 
 
 	def static dbDeleteFollow(id) {
+		dbInit()
 		Connection conn = DriverManager.getConnection(
-						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
 
 		Statement stmt = conn.createStatement()
 		def sql = "DELETE FROM follow_log WHERE id = " + id
@@ -153,8 +174,9 @@ class common_db {
 
 
 	def static dbAlreadyFollowed(id) {
+		dbInit()
 		Connection conn = DriverManager.getConnection(
-						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
 
 		Statement stmt = conn.createStatement()
 		def sql = "SELECT followed_on FROM follow_log WHERE id = " + id
@@ -172,8 +194,9 @@ class common_db {
 
 
 	def static dbCanUnfollow(id) {
+		dbInit()
 		Connection conn = DriverManager.getConnection(
-						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
 
 		Statement stmt = conn.createStatement()
 		def sql = "SELECT persist FROM follow_log WHERE id = " + id
@@ -190,8 +213,9 @@ class common_db {
 
 
 	def static dbIdsToFollow() {
+		dbInit()
 		Connection conn = DriverManager.getConnection(
-						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
 
 		Statement stmt = conn.createStatement()
 		def sql = "SELECT value FROM limits WHERE param = 'follow_batch_size'"
@@ -214,8 +238,9 @@ class common_db {
 
 
 	def static dbUnfollowBatchSize() {
+		dbInit()
 		Connection conn = DriverManager.getConnection(
-						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
 
 		Statement stmt = conn.createStatement()
 
@@ -229,8 +254,9 @@ class common_db {
 	}
 
 	def static dbIdsToUnfollow() {
+		dbInit()
 		Connection conn = DriverManager.getConnection(
-						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
 
 		Statement stmt = conn.createStatement()
 
@@ -261,8 +287,9 @@ class common_db {
 
 
 	def static dbDailyFollowLimitReached() {
+		dbInit()
 		Connection conn = DriverManager.getConnection(
-						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
 
 		Statement stmt = conn.createStatement()
 
@@ -290,8 +317,9 @@ class common_db {
 
 
 	def static dbDailyUnfollowLimitReached() {
+		dbInit()
 		Connection conn = DriverManager.getConnection(
-						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
 
 		Statement stmt = conn.createStatement()
 
@@ -319,8 +347,9 @@ class common_db {
 
 
 	def static dbNextLead() {
+		dbInit()
 		Connection conn = DriverManager.getConnection(
-						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
 
 		Statement stmt = conn.createStatement()
 
@@ -337,8 +366,9 @@ class common_db {
 
 
 	def static dbQueueLeadsBatchSize() {
+		dbInit()
 		Connection conn = DriverManager.getConnection(
-						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
 
 		Statement stmt = conn.createStatement()
 
@@ -353,8 +383,9 @@ class common_db {
 
 
 	def static dbLeadQueueCompleted(id) {
+		dbInit()
 		Connection conn = DriverManager.getConnection(
-						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
 
 		Statement stmt = conn.createStatement()
 		def sql = "UPDATE leads SET last_queued = now() WHERE id = " + id
@@ -365,8 +396,9 @@ class common_db {
 
 
 	def static dbGetInfluencers() {
+		dbInit()
 		Connection conn = DriverManager.getConnection(
-						"jdbc:mysql://localhost/" + db_name + "?user=" + db_user + "&password=" + db_pass)
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
 
 		Statement stmt = conn.createStatement()
 
