@@ -3,6 +3,7 @@
 
 import twitter4j.*
 import static common_db.*
+import static common_twitter.*
 
 
 twitter = TwitterFactory.getSingleton()
@@ -39,7 +40,7 @@ def queueUpLeadFollowers(max) {
 	def batchSize = dbQueueLeadsBatchSize()
 	println "batchSize: " + batchSize
 
-	def lead = twitter.lookupUsers(leadId).first()
+	def lead = lookupUser(twitter, leadId)
 	println "Followers of " + lead.screenName
 
 	def nextCursor = -1
@@ -53,8 +54,8 @@ def queueUpLeadFollowers(max) {
 		for (id in idsToFollow.ids) {
 			if (id != me.id) {
 				if (! dbQueuedUpToFollow(id)) {
-					def user = twitter.lookupUsers(id).first()
-					if (dbQueueFollow(id, user.screenName, user.name)) {
+					def user = lookupUser(twitter, id)
+					if (dbQueueFollow(id)) {
 						println "Queueing up " + user.screenName + " to be followed..."
 						--max
 						--batchSize

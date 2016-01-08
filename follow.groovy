@@ -3,6 +3,7 @@
 
 import twitter4j.*
 import static common_db.*
+import static common_twitter.*
 
 
 twitter = TwitterFactory.getSingleton()
@@ -44,17 +45,18 @@ def batchFollow() {
 
 
 def follow_someone(id) {
-	def user = twitter.lookupUsers(id).first()
+	def user = lookupUser(twitter, id)
 	println "Following " + user.screenName + " ..."
 	try {
 		twitter.createFriendship(id)
 		dbFollow(id, user.screenName, user.name)
 	}
 	catch (TwitterException ex) {
-		// println "Exception: " + ex
+		println "Exception: " + ex
 		if (ex.statusCode == 403) {
 			println "Follow limit reached ..."
 			//TODO: Handle limitation on the number of follows
+			//TODO: This can only be the the user has protected twits
 		}
 	}
 }
@@ -67,7 +69,7 @@ def should_follow(id) {
 	def user = null
 
 	try {
-		user = twitter.lookupUsers(id).first()
+		user = lookupUser(twitter, id)
 		// println user.name
 	}
 

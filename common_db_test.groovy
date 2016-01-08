@@ -131,6 +131,23 @@ def dbIdsToUnfollowTest() {
 }
 
 
+def dbAlreadyFollowerTest() {
+	println dbAlreadyFollower(2373542576)
+	println dbAlreadyFollower(208586904)
+}
+
+
+def dbGetUserTest() {
+	println dbGetUser(4253059829)
+}
+
+
+def dbPutUserTest() {
+	dbPutUser(4253059829, 'PaseandoAyapel', 'Paseando Por Ayapel')
+	dbPutUser(3199466830, 'AskCrowdMole', 'CrowdMole')
+}
+
+
 /*
 	main()
 */

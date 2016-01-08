@@ -6,13 +6,12 @@ import java.util.Date
 
 class common_db {
 
-	def static dbUrl = null //'jdbc:mysql://localhost/twitabout'
-	def static dbUser = null //'rational'
-	def static dbPassword = null //'Gr33nhat'
+	def static dbUrl = null
+	def static dbUser = null
+	def static dbPassword = null
 
 
-	def static
-	dbInit() {
+	def static dbInit() {
 		if (dbUrl == null || dbUser == null || dbPassword == null) {
 			File propFile = new File('db.properties')
 			def props = new Properties()
@@ -22,6 +21,52 @@ class common_db {
 			dbUser = config.db.user
 			dbPassword = config.db.password
 		}
+	}
+
+
+	def static dbGetUser(id) {
+		dbInit()
+		Connection conn = DriverManager.getConnection(
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+
+		Statement stmt = conn.createStatement()
+		def sql = "SELECT id, name, screen_name FROM twitter_users WHERE id=${id}"
+		def rs = stmt.executeQuery(sql)
+
+		def user = null
+		if (rs.first()) {
+			user = [
+				'id':			rs.getLong('id'),
+				'screenName':	rs.getString('screen_name'),
+				'name':			rs.getString('name')
+			]
+		}
+
+		conn.close()
+		return user
+	}
+
+
+	def static dbPutUser(id, screenName, name) {
+		dbInit()
+		Connection conn = DriverManager.getConnection(
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+
+		Statement stmt = conn.createStatement()
+		def sql = "SELECT id FROM twitter_users WHERE id=${id}"
+		def rs = stmt.executeQuery(sql)
+
+		if (rs.first()) {
+			// Record exists - update
+			sql = "UPDATE twitter_users SET screen_name='${screenName}', name='${name}' WHERE id=${id}"
+		} else {
+			// Record doesn't exist - create new
+			sql = "INSERT INTO twitter_users (id, screen_name, name) VALUES (${id}, '${screenName}', '${name}')"
+		}
+
+		//println sql
+		stmt.executeUpdate(sql)
+		conn.close()
 	}
 
 
@@ -45,7 +90,7 @@ class common_db {
 	}
 
 
-	def static dbQueueFollow (id, screen_name, name = null) {
+	def static dbQueueFollow(id) {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
 						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
@@ -60,16 +105,7 @@ class common_db {
 		def sql = "SELECT id FROM follow_log WHERE id=${id}"
 		ResultSet rs = stmt.executeQuery(sql)
 		if (!rs.first()) {
-			sql = "INSERT INTO follow_log (id, screen_name"
-			if (name != null) {	
-				sql = sql + ", name"
-			}
-			sql = sql + ") VALUES (" + id + ",\"" + screen_name + "\""
-			if (name != null) {
-				sql = sql + ",\"" + name + "\""
-			}
-			sql = sql + ")"
-
+			sql = "INSERT INTO follow_log (id) VALUES (${id})"
 			stmt.executeUpdate(sql)
 			didIt = true
 		}
@@ -119,29 +155,29 @@ class common_db {
 
 		// Check if already queued up to be followed
 		if (dbQueuedUpToFollow(id)) {
-			sql = "UPDATE follow_log SET followed_on = now() WHERE id = " + id
-
-			// Fix: if the 'name' wasn't set before, update it now
-			if (name != null) {
-				sql = "UPDATE follow_log SET followed_on = now(), name = " + "\"" + name + "\" WHERE id = " + id
-			}
-
+			sql = "UPDATE follow_log SET followed_on = now() WHERE id = ${id}"
 		} else {
-			sql = "INSERT INTO follow_log (id, screen_name"
-			if (name != null) {
-				sql = sql + ", name"
-			}
-			sql = sql + ", followed_on) VALUES (" + id + ",\"" + screen_name + "\""
-			if (name != null) {
-				sql = sql + ",\"" + name + "\""
-			}
-			sql = sql + ",now())"
+			sql = "INSERT INTO follow_log (id, followed_on) VALUES (${id}, now())"
 		}
 
 		Connection conn = DriverManager.getConnection(
 						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
 
 		Statement stmt = conn.createStatement()
+		stmt.executeUpdate(sql)
+		conn.close()
+	}
+
+
+	def static dbRefollow (id) {
+		dbInit()
+		Connection conn = DriverManager.getConnection(
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+
+		Statement stmt = conn.createStatement()
+
+		def sql = "UPDATE follow_log SET unfollowed_on=NULL WHERE id=${id}"
+
 		stmt.executeUpdate(sql)
 		conn.close()
 	}
@@ -154,7 +190,7 @@ class common_db {
 
 		Statement stmt = conn.createStatement()
 
-		def sql = "UPDATE follow_log SET unfollowed_on=now() WHERE id=" + id
+		def sql = "UPDATE follow_log SET unfollowed_on=now() WHERE id=${id}"
 
 		stmt.executeUpdate(sql)
 		conn.close()
@@ -193,6 +229,26 @@ class common_db {
 	}
 
 
+	def static dbAlreadyUnfollowed(id) {
+		dbInit()
+		Connection conn = DriverManager.getConnection(
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+
+		Statement stmt = conn.createStatement()
+		def sql = "SELECT unfollowed_on FROM follow_log WHERE id = " + id
+		ResultSet rs = stmt.executeQuery(sql)
+
+		def retval = false
+		if (rs.first()) {
+			if (rs.getTimestamp('unfollowed_on') != null)
+				retval = true
+		}
+
+		conn.close()
+		return retval
+	}
+
+
 	def static dbCanUnfollow(id) {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
@@ -223,7 +279,7 @@ class common_db {
 		rs.first()
 		def limit = rs.getInt('value')
 
-		sql = "SELECT id FROM follow_log WHERE followed_on IS NULL LIMIT " + limit
+		sql = "SELECT id FROM follow_log WHERE followed_on IS NULL"
 		rs = stmt.executeQuery(sql)
 		rs.beforeFirst()
 
@@ -233,7 +289,8 @@ class common_db {
 		}
 
 		conn.close()
-		return ids2follow
+		Collections.shuffle(ids2follow)
+		return ids2follow.take(limit)
 	}
 
 
@@ -294,7 +351,7 @@ class common_db {
 		Statement stmt = conn.createStatement()
 
 		def today = new Date()
-		def sql = "SELECT COUNT(*) FROM follow_log WHERE followed_on >= '" + today.format("YYYY-MM-dd") + "'"
+		def sql = "SELECT COUNT(*) FROM follow_log WHERE followed_on >= '" + today.format("yyyy-MM-dd") + "'"
 
 		ResultSet rs = stmt.executeQuery(sql)
 		rs.first()
@@ -305,11 +362,10 @@ class common_db {
 		rs.first()
 		def dailyLimit = rs.getInt('value')
 
-		def retval
-		if (followedToday < dailyLimit)
+		def retval = true
+		if (followedToday < dailyLimit) {
 			retval = false
-		else
-			retval = true
+		}
 
 		conn.close()
 		return retval
@@ -413,6 +469,79 @@ class common_db {
 
 		conn.close()
 		return influencers
+	}
+
+
+	def static dbFollowingMe(id) {
+		
+	}
+
+
+	def static dbFollower (id) {
+		dbInit()
+		Connection conn = DriverManager.getConnection(
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+
+		Statement stmt = conn.createStatement()
+
+		def sql = "INSERT followers_log (id) VALUES (${id})"
+
+		stmt.executeUpdate(sql)
+		conn.close()
+	}
+
+
+	def static dbUnfollower (id) {
+		dbInit()
+		Connection conn = DriverManager.getConnection(
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+
+		Statement stmt = conn.createStatement()
+
+		def sql = "UPDATE followers_log SET unfollowed_on = now() WHERE id=${id}"
+
+		stmt.executeUpdate(sql)
+		conn.close()
+	}
+
+
+	def static dbAllFollowers() {
+		dbInit()
+		Connection conn = DriverManager.getConnection(
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+
+		Statement stmt = conn.createStatement()
+		def sql = "SELECT id FROM followers_log WHERE unfollowed_on IS NULL"
+		def rs = stmt.executeQuery(sql)
+		rs.beforeFirst()
+
+		def ids = []
+		while (rs.next()) {
+			ids.add(rs.getLong('id'))
+		}
+
+		conn.close()
+		return ids
+	}
+
+
+	def static dbAlreadyFollower(id) {
+		dbInit()
+		Connection conn = DriverManager.getConnection(
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+
+		Statement stmt = conn.createStatement()
+		def sql = "SELECT followed_on FROM followers_log WHERE id = ${id} AND unfollowed_on IS NULL"
+		ResultSet rs = stmt.executeQuery(sql)
+
+		def retval = false
+		if (rs.first()) {
+			if (rs.getTimestamp('followed_on') != null)
+				retval = true
+		}
+
+		conn.close()
+		return retval
 	}
 
 }

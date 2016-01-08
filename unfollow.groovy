@@ -3,6 +3,7 @@
 
 import twitter4j.*
 import static common_db.*
+import static common_twitter.*
 
 
 twitter = TwitterFactory.getSingleton()
@@ -37,7 +38,7 @@ def batchUnfollow() {
 			println "Daily un-follow limit reached"
 			break
 		}
-		if (should_unfollow(id)) {
+		if (!dbAlreadyFollower(id)) {
 			unfollow_someone(id)
 			if (--batchSize == 0) {
 				return
@@ -49,7 +50,7 @@ def batchUnfollow() {
 
 
 def unfollow_someone(id) {
-	def user = twitter.lookupUsers(id).first()
+	def user = lookupUser(twitter, id)
 	println "Un-following " + user.screenName + " ..."
 	try {
 		twitter.destroyFriendship(id)
@@ -66,7 +67,7 @@ def should_unfollow(id) {
 	def retval = false
 
 	try {
-		user = twitter.lookupUsers(id).first()
+		user = lookupUser(twitter, id)
 		// println user.name
 
 		// Only unfollow those who haven't followed us back

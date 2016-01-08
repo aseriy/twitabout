@@ -25,7 +25,7 @@ Producer<String, String> producer = new Producer<String, String>(config)
 StatusListener statusListener = new StatusListener() {
 	void onStatus(Status status) {
 		println status.getUser().getName() + " : " + status.getText()
-		//Status To JSON String
+		// Status To JSON String
 		String statusJson = DataObjectFactory.getRawJSON(status)
 		KeyedMessage<String, String> data = new KeyedMessage<String, String>("influencers", statusJson)
 		producer.send(data)
