@@ -58,13 +58,26 @@ class common_db {
 
 		if (rs.first()) {
 			// Record exists - update
-			sql = "UPDATE twitter_users SET screen_name='${screenName}', name='${name}' WHERE id=${id}"
+			sql = "UPDATE twitter_users SET screen_name='${screenName}', name=\"${name}\" WHERE id=${id}"
 		} else {
 			// Record doesn't exist - create new
-			sql = "INSERT INTO twitter_users (id, screen_name, name) VALUES (${id}, '${screenName}', '${name}')"
+			sql = "INSERT INTO twitter_users (id, screen_name, name) VALUES (${id}, '${screenName}', \"${name}\")"
 		}
 
 		//println sql
+		stmt.executeUpdate(sql)
+		conn.close()
+	}
+
+
+	def static dbDeleteUser(id) {
+		dbInit()
+		Connection conn = DriverManager.getConnection(
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+
+		Statement stmt = conn.createStatement()
+		def sql = "DELETE FROM twitter_users WHERE id=${id}"
+
 		stmt.executeUpdate(sql)
 		conn.close()
 	}
@@ -325,7 +338,7 @@ class common_db {
 		def retention = rs.getInt('value')
 
 		def today = new Date()		
-		def followedBefore = (today - retention).format("YYYY-MM-dd")
+		def followedBefore = (today - retention).format("yyyy-MM-dd")
 		sql = "SELECT id FROM follow_log " +
 				"WHERE persist IS FALSE AND " +
 				"unfollowed_on IS NULL AND " +
@@ -380,7 +393,7 @@ class common_db {
 		Statement stmt = conn.createStatement()
 
 		def today = new Date()
-		def sql = "SELECT COUNT(*) FROM follow_log WHERE unfollowed_on >= '" + today.format("YYYY-MM-dd") + "'"
+		def sql = "SELECT COUNT(*) FROM follow_log WHERE unfollowed_on >= '" + today.format("yyyy-MM-dd") + "'"
 
 		ResultSet rs = stmt.executeQuery(sql)
 		rs.first()

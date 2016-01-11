@@ -71,7 +71,12 @@ while (idsFollowers.nextCursor != 0) {
 dbAllFollowers().each { id ->
 	if (allIdsFollowers.find {it == id} == null) {
 		def user = lookupUser(twitter, id)
-		println "${user.screenName} stopped following"
+		if (user == null) {
+			println "User " + id + " no longer exists, deleting ..."
+		} else {
+			println "${user.screenName} stopped following"
+		}
+
 		dbUnfollower(id)
 	}
 }

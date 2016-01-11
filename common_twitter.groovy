@@ -14,7 +14,10 @@ class common_twitter {
 				dbPutUser(tUser.id, tUser.screenName, tUser.name)
 			}
 			catch (TwitterException ex) {
-				println ex
+				//println ex
+				if (ex.statusCode == 404) {
+					dbDeleteUser(id)
+				}
 			}
 		}
 
