@@ -3,29 +3,12 @@
 
 import twitter4j.*
 import static common_db.*
-import static common_twitter.*
+import TwitterWrapper
 
 
-twitter = TwitterFactory.getSingleton()
+twitter = new TwitterWrapper()
 
-// Add the API rate status listener
-twitter.addRateLimitStatusListener (new RateLimitStatusListener() {
-	void onRateLimitStatus(RateLimitStatusEvent e) {
-		RateLimitStatus status = e.getRateLimitStatus()
-		// println "RateLimitStatus: " + status
-		if (status.remaining < 2) {
-			def sleepTime = status.getSecondsUntilReset() + 5
-			print "API rate limit reached. Sleeping for " + sleepTime + " sec(s) ..."
-			sleep(sleepTime * 1000)
-			println " done"
-		}
-	}
-
-	void onRateLimitReached(RateLimitStatusEvent e) {}
-})
-
-
-me = twitter.verifyCredentials()
+me = twitter.me
 batchUnfollow()
 System.exit(0)
 
@@ -50,7 +33,7 @@ def batchUnfollow() {
 
 
 def unfollow_someone(id) {
-	def user = lookupUser(twitter, id)
+	def user = twitter.lookupUser(id)
 	println "Un-following " + user.screenName + " ..."
 	try {
 		twitter.destroyFriendship(id)
@@ -67,11 +50,11 @@ def should_unfollow(id) {
 	def retval = false
 
 	try {
-		user = lookupUser(twitter, id)
+		user = twitter.lookupUser(id)
 		// println user.name
 
 		// Only unfollow those who haven't followed us back
-		def friendship = twitter.lookupFriendships(id).getAt(0)
+		def friendship = twitter.lookupFriendship(id)
 		println friendship
 		retval = !friendship.followedBy
 	}

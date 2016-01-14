@@ -4,6 +4,7 @@
 
 import twitter4j.*
 import static common_db.*
+import static common_twitter.*
 
 import com.opencsv.CSVReader
 import com.opencsv.CSVParser
@@ -43,7 +44,7 @@ me = twitter.verifyCredentials()
 for (def i = 0; i < max; i++) {
 	def id = ids[i]
 	try {
-		def user = twitter.lookupUsers(id).first()
+		def user = lookupUser(twitter, id)
 		def out = [id, user.screenName, user.name].join(",")
 		println out
 	}

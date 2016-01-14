@@ -3,29 +3,11 @@
 
 import twitter4j.*
 import static common_db.*
-import static common_twitter.*
+import TwitterWrapper
 
 
-twitter = TwitterFactory.getSingleton()
-
-// Add the API rate status listener
-twitter.addRateLimitStatusListener (new RateLimitStatusListener() {
-	void onRateLimitStatus(RateLimitStatusEvent e) {
-		RateLimitStatus status = e.getRateLimitStatus()
-		// println "RateLimitStatus: " + status
-		if (status.remaining < 2) {
-			def sleepTime = status.getSecondsUntilReset() + 5
-			print "API rate limit reached. Sleeping for " + sleepTime + " sec(s) ..."
-			sleep(sleepTime * 1000)
-			println " done"
-		}
-	}
-
-	void onRateLimitReached(RateLimitStatusEvent e) {}
-})
-
-
-me = twitter.verifyCredentials()
+twitter = new TwitterWrapper()
+me = twitter.me
 batchFollow()
 System.exit(0)
 
@@ -45,7 +27,7 @@ def batchFollow() {
 
 
 def follow_someone(id) {
-	def user = lookupUser(twitter, id)
+	def user = twitter.lookupUser(id)
 	println "Following " + user.screenName + " ..."
 	try {
 		twitter.createFriendship(id)
@@ -69,7 +51,7 @@ def should_follow(id) {
 	def user = null
 
 	try {
-		user = lookupUser(twitter, id)
+		user = twitter.lookupUser(id)
 		// println user.name
 	}
 

@@ -28,7 +28,7 @@ twitter.addRateLimitStatusListener (new RateLimitStatusListener() {
 
 me = twitter.verifyCredentials()
 
-def lead = twitter.lookupUsers(leadHandle).first()
+def lead = twitter.lookupUsers(leadHandle)
 println "Followers of " + [lead.id, lead.screenName, lead.name].join(" | ")
 
 def nextCursor = -1

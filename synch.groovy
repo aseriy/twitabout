@@ -3,29 +3,9 @@
 
 import twitter4j.*
 import static common_db.*
-import static common_twitter.*
+import TwitterWrapper
 
-
-twitter = TwitterFactory.getSingleton()
-
-// Add the API rate status listener
-twitter.addRateLimitStatusListener (new RateLimitStatusListener() {
-	void onRateLimitStatus(RateLimitStatusEvent e) {
-		RateLimitStatus status = e.getRateLimitStatus()
-		// println "RateLimitStatus: " + status
-		if (status.remaining < 2) {
-			def sleepTime = status.getSecondsUntilReset() + 5
-			print "API rate limit reached. Sleeping for " + sleepTime + " sec(s) ..."
-			sleep(sleepTime * 1000)
-			println " done"
-		}
-	}
-
-	void onRateLimitReached(RateLimitStatusEvent e) {}
-})
-
-
-me = twitter.verifyCredentials()
+def twitter = new TwitterWrapper()
 
 def nextCursor = -1
 def idsFriends = []
@@ -36,12 +16,12 @@ while (idsFriends.nextCursor != 0) {
 
 	for (id in idsFriends.ids) {
 		if (!dbAlreadyFollowed(id)) {
-			def user = lookupUser(twitter, id)
+			def user = twitter.lookupUser(id)
 			println "Following " + user.screenName
 			dbFollow(id, user.screenName, user.name)
 			dbPersist(id)
 		} else if (dbAlreadyUnfollowed(id)) {
-			def user = lookupUser(twitter, id)
+			def user = twitter.lookupUser(id)
 			println "Re-following " + user.screenName
 			dbRefollow(id)
 			dbPersist(id)
@@ -59,7 +39,7 @@ while (idsFollowers.nextCursor != 0) {
 
 	for (id in idsFollowers.ids) {
 		if (!dbAlreadyFollower(id)) {
-			def user = lookupUser(twitter, id)
+			def user = twitter.lookupUser(id)
 			println "Followed by " + user.screenName
 			dbFollower(id)
 		}
@@ -70,7 +50,7 @@ while (idsFollowers.nextCursor != 0) {
 
 dbAllFollowers().each { id ->
 	if (allIdsFollowers.find {it == id} == null) {
-		def user = lookupUser(twitter, id)
+		def user = twitter.lookupUser(id)
 		if (user == null) {
 			println "User " + id + " no longer exists, deleting ..."
 		} else {
