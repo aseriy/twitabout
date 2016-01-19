@@ -3,29 +3,11 @@
 
 import twitter4j.*
 import static common_db.*
-import static common_twitter.*
+import TwitterWrapper
 
 
-twitter = TwitterFactory.getSingleton()
-
-// Add the API rate status listener
-twitter.addRateLimitStatusListener (new RateLimitStatusListener() {
-	void onRateLimitStatus(RateLimitStatusEvent e) {
-		RateLimitStatus status = e.getRateLimitStatus()
-		// println "RateLimitStatus: " + status
-		if (status.remaining < 2) {
-			def sleepTime = status.getSecondsUntilReset() + 5
-			print "API rate limit reached. Sleeping for " + sleepTime + " sec(s) ..."
-			sleep(sleepTime * 1000)
-			println " done"
-		}
-	}
-
-	void onRateLimitReached(RateLimitStatusEvent e) {}
-})
-
-
-me = twitter.verifyCredentials()
+twitter = new TwitterWrapper()
+me = twitter.me
 queueUpLeadFollowers(dbQueueLeadsBatchSize())
 System.exit(0)
 
@@ -40,7 +22,7 @@ def queueUpLeadFollowers(max) {
 	def batchSize = dbQueueLeadsBatchSize()
 	println "batchSize: " + batchSize
 
-	def lead = lookupUser(twitter, leadId)
+	def lead = twitter.lookupUser(leadId)
 	println "Followers of " + lead.screenName
 
 	def nextCursor = -1
@@ -54,7 +36,7 @@ def queueUpLeadFollowers(max) {
 		for (id in idsToFollow.ids) {
 			if (id != me.id) {
 				if (! dbQueuedUpToFollow(id)) {
-					def user = lookupUser(twitter, id)
+					def user = twitter.lookupUser(id)
 					if (dbQueueFollow(id)) {
 						println "Queueing up " + user.screenName + " to be followed..."
 						--max

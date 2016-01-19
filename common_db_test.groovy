@@ -19,11 +19,7 @@ def dbQueueFollowTest() {
 
 	toQueue.each {
 		println "Queuing up " + it.screen_name
-		if (it.name) {
-			dbQueueFollow(it.id, it.screen_name, it.name)
-		} else {
-			dbQueueFollow(it.id, it.screen_name)
-		}
+		dbQueueFollow(it.id)
 	}
 }
 
@@ -48,7 +44,7 @@ def dbFollow1Test() {
 
 	toFollow.each {
 		println "Following " + it.screen_name
-		dbFollow(it.id, it.screen_name, it.name)
+		dbFollow(it.id)
 	}
 }
 
@@ -74,11 +70,7 @@ def dbFollow2Test() {
 
 	toFollow.each {
 		println "Following " + it.screen_name
-		if (it.name) {
-			dbFollow(it.id, it.screen_name, it.name)
-		} else {
-			dbFollow(it.id, it.screen_name)
-		}
+		dbFollow(it.id)
 	}
 }
 
@@ -95,7 +87,9 @@ def dbAlreadyFollowedTest() {
 
 
 def dbIdsToFollowTest() {
-	println dbIdsToFollow()
+	def ids = dbIdsToFollow().sort()
+	println ids
+	return ids.size()
 }
 
 
@@ -155,8 +149,8 @@ def dbPutUserTest() {
 //println this.metaClass.methods*.name
 
 def testToRun = this.args.getAt(0)
-"${testToRun}Test"()
-System.exit(0)
+def exitCode = "${testToRun}Test"()
+System.exit(exitCode ?: 0)
 
 
 

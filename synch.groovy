@@ -18,7 +18,7 @@ while (idsFriends.nextCursor != 0) {
 		if (!dbAlreadyFollowed(id)) {
 			def user = twitter.lookupUser(id)
 			println "Following " + user.screenName
-			dbFollow(id, user.screenName, user.name)
+			dbFollow(id)
 			dbPersist(id)
 		} else if (dbAlreadyUnfollowed(id)) {
 			def user = twitter.lookupUser(id)

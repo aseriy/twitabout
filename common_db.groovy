@@ -30,7 +30,13 @@ class common_db {
 						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
 
 		Statement stmt = conn.createStatement()
-		def sql = "SELECT id, name, screen_name FROM twitter_users WHERE id=${id}"
+		// The id could a Long (id) or String (screen_name)
+		def sql = "SELECT id, name, screen_name FROM twitter_users WHERE"
+		if (id instanceof String) {
+			sql = "${sql} screen_name='${id}'"
+		} else {
+			sql = "${sql} id=${id}"
+		}
 		def rs = stmt.executeQuery(sql)
 
 		def user = null
@@ -162,7 +168,7 @@ class common_db {
 	}
 
 
-	def static dbFollow (id, screen_name, name = null) {
+	def static dbFollow (id) {
 		dbInit()
 		def sql = ''
 
@@ -302,7 +308,7 @@ class common_db {
 		}
 
 		conn.close()
-		Collections.shuffle(ids2follow)
+		//Collections.shuffle(ids2follow)
 		return ids2follow.take(limit)
 	}
 

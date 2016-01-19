@@ -42,6 +42,10 @@ class TwitterWrapper {
 		twitter.getFollowersIDs(cur)
 	}
 
+	def getFollowersIDs(id, cur) {
+		twitter.getFollowersIDs(id, cur)
+	}
+
 	def createFriendship(id) {
 		twitter.createFriendship(id)
 	}
