@@ -308,7 +308,7 @@ class common_db {
 		}
 
 		conn.close()
-		//Collections.shuffle(ids2follow)
+		Collections.shuffle(ids2follow)
 		return ids2follow.take(limit)
 	}
 
@@ -437,6 +437,58 @@ class common_db {
 		conn.close()
 
 		return lead
+	}
+
+
+	def static dbGetLead(id) {
+		dbInit()
+		Connection conn = DriverManager.getConnection(
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+
+		Statement stmt = conn.createStatement()
+
+		def lead = null
+		def user = dbGetUser(id)
+		
+		if (user != null) {
+			def sql = "SELECT id, last_queued FROM leads WHERE id=${user.id}"
+			ResultSet rs = stmt.executeQuery(sql)
+			if (!rs.first())
+				return null
+
+			lead = [
+					id: rs.getLong('id'),
+					screenName: user.screenName,
+					name: user.name,
+					lastQueued: rs.getTimestamp('last_queued')
+				]
+			conn.close()
+		}
+
+		return lead
+	}
+
+
+	def static dbPutLead(id) {
+		dbInit()
+		Connection conn = DriverManager.getConnection(
+						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+
+		def user = dbGetUser(id)
+		def success = false
+
+		if (user != null) {
+			def lead = dbGetLead(id)
+			if (lead == null) {
+				Statement stmt = conn.createStatement()
+				def sql = "INSERT INTO leads (id) VALUES (${id})"
+				stmt.executeUpdate(sql)
+			}
+
+			success = true
+		}
+
+		return success
 	}
 
 

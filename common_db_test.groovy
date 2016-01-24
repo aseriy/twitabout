@@ -142,6 +142,17 @@ def dbPutUserTest() {
 }
 
 
+def dbGetLeadTest() {
+	println dbGetLead('alexseriy')
+	println dbGetLead('RealGeneKim')
+}
+
+
+def dbPutLeadTest() {
+	println dbPutLead('alexseriy')
+}
+
+
 /*
 	main()
 */
