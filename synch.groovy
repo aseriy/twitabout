@@ -35,18 +35,17 @@ def idsFollowers = []
 while (idsFollowers.nextCursor != 0) {
 	idsFollowers = twitter.getFollowersIDs(nextCursor)
 	//println idsFollowers.ids
-	nextCursor = idsFollowers.nextCursor
-
-	for (id in idsFollowers.ids) {
-		if (!dbAlreadyFollower(id)) {
-			def user = twitter.lookupUser(id)
-			println "Followed by " + user.screenName
-			dbFollower(id)
-		}
-	}
-
 	allIdsFollowers.addAll(idsFollowers.ids)
+	nextCursor = idsFollowers.nextCursor
 }
+for (id in allIdsFollowers) {
+	def user = twitter.lookupUser(id)
+	if (user != null && !dbAlreadyFollower(id)) {
+		println "Followed by " + user.screenName
+		dbFollower(id)
+	}
+}
+
 
 dbAllFollowers().each { id ->
 	if (allIdsFollowers.find {it == id} == null) {

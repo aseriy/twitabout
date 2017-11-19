@@ -51,16 +51,30 @@ class TwitterWrapper {
 	}
 
 	def destroyFriendship(id) {
-		twitter.destroyFriendship(id)
+		def user = null
+
+		try {
+			user = twitter.destroyFriendship(id)
+			//println "User: " + user
+		}
+		catch (TwitterException ex) {
+			//println "Exception: " + ex
+			if (ex.statusCode == 404) {
+				dbDeleteUser(id)
+			}
+		}
+
+		return user
 	}
 
-	def lookupUser (id) {
-		def user = dbGetUser(id)
+	def lookupUser (id, useCache = true) {
+		def user = useCache ? dbGetUser(id) : null
 		if (user == null) {
 			try {
 				def tUser = twitter.lookupUsers(id).first()
-				user = [id: tUser.id, screenName: tUser.screenName, name: tUser.name]
-				dbPutUser(tUser.id, tUser.screenName, tUser.name)
+				//println tUser
+				dbPutUser(tUser)
+				user = dbGetUser(id)
 			}
 			catch (TwitterException ex) {
 				//println ex

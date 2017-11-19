@@ -153,6 +153,22 @@ def dbPutLeadTest() {
 }
 
 
+def dbDailyFollowBatchesTest() {
+	println dbDailyFollowBatches()
+}
+
+
+def dbGetUserIdsTest() {
+	println dbGetUserIds(1)
+	println dbGetUserIds(1, 0)
+	println dbGetUserIds(1, 1)
+	println dbGetUserIds(1, 2)
+	println dbGetUserIds(1, 3)
+	println dbGetUserIds(10)
+	println dbGetUserIds(100, 100000)
+}
+
+
 /*
 	main()
 */

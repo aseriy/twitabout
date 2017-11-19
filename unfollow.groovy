@@ -3,6 +3,7 @@
 
 import twitter4j.*
 import static common_db.*
+import static common_utils.*
 import TwitterWrapper
 
 
@@ -36,8 +37,9 @@ def unfollow_someone(id) {
 	def user = twitter.lookupUser(id)
 	println "Un-following " + user.screenName + " ..."
 	try {
-		twitter.destroyFriendship(id)
-		dbUnfollow(id)
+		if (twitter.destroyFriendship(id) != null) {
+			dbUnfollow(id)
+		}
 	}
 	catch (TwitterException ex) {
 		// println "Exception: " + ex

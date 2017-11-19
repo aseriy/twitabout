@@ -3,17 +3,23 @@
 
 import twitter4j.*
 import static common_db.*
+import static common_utils.*
 import TwitterWrapper
 
 
 twitter = new TwitterWrapper()
 me = twitter.me
-batchFollow()
+batchFollow((24 / dbDailyFollowBatches() + 0.5).toInteger())
 System.exit(0)
 
 
-def batchFollow() {
-	for (id in dbIdsToFollow()) {
+def batchFollow(timePeriod) {
+	def idsToFollow = dbIdsToFollow()
+	def delaySchedule = randomSchedule(timePeriod, idsToFollow.size())
+
+	for (def i = 0; i < idsToFollow.size(); i++) {
+		def id = idsToFollow.getAt(i)
+
 		if (dbDailyFollowLimitReached()) {
 			println "Daily follow limit reached"
 			break
@@ -21,6 +27,10 @@ def batchFollow() {
 		if (should_follow(id)) {
 			follow_someone(id)
 		}
+
+		// Slow down for a random period
+		println "Next follow in ${secsToHuman(delaySchedule.getAt(i))}"
+		sleep(1000 * delaySchedule.getAt(i))
 	}
 
 }
@@ -34,11 +44,13 @@ def follow_someone(id) {
 		dbFollow(id)
 	}
 	catch (TwitterException ex) {
-		//println "Exception: " + ex
+		println "Exception: " + ex
 		if (ex.statusCode == 403) {
 			println "Twitter limit following has been reached ..."
 			//TODO: Handle limitation on the number of follows
 			//TODO: This can only be the the user has protected twits
+
+			//TwitterException{exceptionCode=[422431fa-182e52d2], statusCode=403, message=To protect our users from spam and other malicious activity, this account is temporarily locked. Please log in to https://twitter.com to unlock your account., code=326, retryAfter=-1, rateLimitStatus=null, version=4.0.4}
 		}
 	}
 }

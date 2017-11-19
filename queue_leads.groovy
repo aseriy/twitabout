@@ -8,19 +8,20 @@ import TwitterWrapper
 
 twitter = new TwitterWrapper()
 me = twitter.me
-queueUpLeadFollowers(dbQueueLeadsBatchSize())
+def followBatch = dbQueueLeadsBatchSize()
+dbAllLeads().each { id ->
+	queueUpLeadFollowers(id, followBatch)
+}
 System.exit(0)
 
 
-def queueUpLeadFollowers(max) {
-	def leadId = dbNextLead()
+def queueUpLeadFollowers(leadId, max) {
 	if (leadId == null) {
 		println "No users to follow ... done."
 		return
 	}
 
-	def batchSize = dbQueueLeadsBatchSize()
-	println "batchSize: " + batchSize
+	println "batchSize: ${max}"
 
 	def lead = twitter.lookupUser(leadId)
 	println "Followers of " + lead.screenName
@@ -28,35 +29,45 @@ def queueUpLeadFollowers(max) {
 	def nextCursor = -1
 	def idsToFollow = []
 
-	while (idsToFollow.nextCursor != 0) {
-		idsToFollow = twitter.getFollowersIDs(leadId, nextCursor)
-		//println idsToFollow.ids
-		nextCursor = idsToFollow.nextCursor
-
-		for (id in idsToFollow.ids) {
+	while (nextCursor != 0 && idsToFollow.size() <= max) {
+		def idsToFollowBatch = twitter.getFollowersIDs(leadId, nextCursor)
+		idsToFollowBatch.ids.each { id ->
 			if (id != me.id) {
-				if (! dbQueuedUpToFollow(id)) {
+				if (!dbQueuedUpToFollow(id)) {
 					def user = twitter.lookupUser(id)
-					if (dbQueueFollow(id)) {
-						println "Queueing up " + user.screenName + " to be followed..."
-						--max
-						--batchSize
-					} else {
-						println "${user.screenName} was followed & un-followed in the past." 
-					}
-
-					if (max == 0 || batchSize == 0) {
-						nextCursor = 0
-						break
+					if (user != null) {
+						println "User: ${user.screenName}"
+						idsToFollow.add(id)
 					}
 				}
 			}
 		}
+
+		nextCursor = idsToFollowBatch.nextCursor
 	}
 
-	// Followed all the lead's followers for now
-	dbLeadQueueCompleted(leadId)
+	// Trim the list to the maximum allowed
+	while (idsToFollow.size() >= max) {
+		idsToFollow.drop(1)
+	}
+	
+	def actuallyQueued = 0
+	idsToFollow.each { id ->
+		if (dbQueueFollow(id)) {
+			println "Queueing up " + user.screenName + " to be followed..."
+			actuallyQueued++
+			println "actuallyQueued: ${actuallyQueued}"
+		} else {
+			println "${user.screenName} was followed & un-followed in the past." 
+		}
+	}
 
+
+	// If we have followed anyone, record when it was done
+	//println actuallyQueued
+	if (actuallyQueued > 0) {
+		dbLeadQueueCompleted(leadId)
+	}
 }
 
 

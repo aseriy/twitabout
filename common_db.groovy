@@ -1,7 +1,8 @@
-@Grab(group='mysql', module='mysql-connector-java', version='5.1.+')
+@Grab(group='mysql', module='mysql-connector-java', version='5.1+')
 
 import java.sql.*
 import java.util.Date
+import static common_utils.*
 
 
 class common_db {
@@ -10,6 +11,17 @@ class common_db {
 	def static dbUser = null
 	def static dbPassword = null
 
+
+	def static dbUserMap = [
+		'screen_name'	: ['screenName'		, {doubleQuote(it)}],
+		'name'			: ['name'			, {doubleQuote(it)}],
+		'location'		: ['location'		, {doubleQuote(it)}],
+		'description'	: ['description'	, {doubleQuote(it)}],
+		'lang'			: ['lang'			, {doubleQuote(it)}],
+		'time_zone'		: ['timeZone'		, {doubleQuote(it)}],
+		'created_on'	: ['createdAt'		, {doubleQuote(it.format("yyyy-MM-dd"))}],
+		'protected'		: ['isProtected'	, {it}]
+	]
 
 	def static dbInit() {
 		if (dbUrl == null || dbUser == null || dbPassword == null) {
@@ -24,10 +36,31 @@ class common_db {
 	}
 
 
+	def static dbGetUserIds(limit, offset = 0) {
+		dbInit()
+		Connection conn = DriverManager.getConnection(
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
+
+		Statement stmt = conn.createStatement()
+		def sql = "SELECT id FROM twitter_users ORDER BY id " +
+					"LIMIT ${limit} OFFSET ${offset}"
+		def rs = stmt.executeQuery(sql)
+		rs.beforeFirst()
+
+		def ids = []
+		while (rs.next()) {
+			ids.add(rs.getLong('id'))
+		}
+
+		conn.close()
+		return ids
+	}
+
+
 	def static dbGetUser(id) {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
 		// The id could a Long (id) or String (screen_name)
@@ -53,21 +86,39 @@ class common_db {
 	}
 
 
-	def static dbPutUser(id, screenName, name) {
+	def static dbPutUser(user) {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
-		def sql = "SELECT id FROM twitter_users WHERE id=${id}"
+		def sql = "SELECT id FROM twitter_users WHERE id=${user.id}"
 		def rs = stmt.executeQuery(sql)
 
 		if (rs.first()) {
 			// Record exists - update
-			sql = "UPDATE twitter_users SET screen_name='${screenName}', name=\"${name}\" WHERE id=${id}"
+			sql = "UPDATE twitter_users SET "
+			
+			def updates = []
+			dbUserMap.each { k, v ->
+				if (user."${v.first()}".toString().compareTo('null') != 0) {
+					updates.add("${k}=" + v.last().call(user."${v.first()}"))
+				}
+			}
+			sql += updates.join(", ") + " WHERE id=${user.id}"
 		} else {
 			// Record doesn't exist - create new
-			sql = "INSERT INTO twitter_users (id, screen_name, name) VALUES (${id}, '${screenName}', \"${name}\")"
+			def columns = []
+			def values = []
+			dbUserMap.each { k, v ->
+				if (user."${v.first()}".toString().compareTo('null') != 0) {
+					columns.add(k)
+					values.add(v.last().call(user."${v.first()}"))
+				}
+			}
+
+			sql = "INSERT INTO twitter_users (id, ${columns.join(", ")}) "
+			sql += "VALUES (${user.id}, ${values.join(", ")})"
 		}
 
 		//println sql
@@ -79,12 +130,16 @@ class common_db {
 	def static dbDeleteUser(id) {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
-		def sql = "DELETE FROM twitter_users WHERE id=${id}"
+		def tables = ['follow_log','followers_log','leads','twitter_users']
 
-		stmt.executeUpdate(sql)
+		tables.each { t ->
+			def sql = "DELETE FROM ${t} WHERE id=${id}"
+			stmt.executeUpdate(sql)
+		}
+
 		conn.close()
 	}
 
@@ -92,7 +147,7 @@ class common_db {
 	def static dbAllFollows() {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
 		def sql = "SELECT id FROM follow_log"
@@ -112,7 +167,7 @@ class common_db {
 	def static dbQueueFollow(id) {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
 
@@ -137,10 +192,10 @@ class common_db {
 	def static dbQueuedUpToFollow (id) {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
-		def sql = "SELECT * FROM follow_log WHERE id = " + id
+		def sql = "SELECT * FROM follow_log WHERE id=${id}"
 
 		ResultSet rs = stmt.executeQuery(sql)
 
@@ -158,7 +213,7 @@ class common_db {
 	def static dbPersist (id) {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
 
@@ -180,7 +235,7 @@ class common_db {
 		}
 
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
 		stmt.executeUpdate(sql)
@@ -191,7 +246,7 @@ class common_db {
 	def static dbRefollow (id) {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
 
@@ -205,7 +260,7 @@ class common_db {
 	def static dbUnfollow (id) {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
 
@@ -219,7 +274,7 @@ class common_db {
 	def static dbDeleteFollow(id) {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
 		def sql = "DELETE FROM follow_log WHERE id = " + id
@@ -231,7 +286,7 @@ class common_db {
 	def static dbAlreadyFollowed(id) {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
 		def sql = "SELECT followed_on FROM follow_log WHERE id = " + id
@@ -251,7 +306,7 @@ class common_db {
 	def static dbAlreadyUnfollowed(id) {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
 		def sql = "SELECT unfollowed_on FROM follow_log WHERE id = " + id
@@ -271,7 +326,7 @@ class common_db {
 	def static dbCanUnfollow(id) {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
 		def sql = "SELECT persist FROM follow_log WHERE id = " + id
@@ -287,10 +342,32 @@ class common_db {
 	}
 
 
+	def static dbDailyFollowBatches() {
+		dbInit()
+		Connection conn = DriverManager.getConnection(
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
+
+		Statement stmt = conn.createStatement()
+
+		def sql = "SELECT value FROM limits WHERE param = 'max_daily_follows'"
+		ResultSet rs = stmt.executeQuery(sql)
+		rs.first()
+		def dailyLimit = rs.getInt('value')
+
+		sql = "SELECT value FROM limits WHERE param = 'follow_batch_size'"
+		rs = stmt.executeQuery(sql)
+		rs.first()
+		def batchSize = rs.getInt('value')
+
+		conn.close()
+		return (dailyLimit / batchSize).toInteger()
+	}
+
+
 	def static dbIdsToFollow() {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
 		def sql = "SELECT value FROM limits WHERE param = 'follow_batch_size'"
@@ -316,7 +393,7 @@ class common_db {
 	def static dbUnfollowBatchSize() {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
 
@@ -332,7 +409,7 @@ class common_db {
 	def static dbIdsToUnfollow() {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
 
@@ -365,7 +442,7 @@ class common_db {
 	def static dbDailyFollowLimitReached() {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
 
@@ -394,7 +471,7 @@ class common_db {
 	def static dbDailyUnfollowLimitReached() {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
 
@@ -424,11 +501,11 @@ class common_db {
 	def static dbNextLead() {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
 
-		def sql = "SELECT id FROM leads ORDER BY last_queued LIMIT 1"
+		def sql = "SELECT id FROM leads ORDER BY RAND() LIMIT 1"
 		ResultSet rs = stmt.executeQuery(sql)
 		if (!rs.first())
 			return null
@@ -440,10 +517,31 @@ class common_db {
 	}
 
 
+	def static dbAllLeads() {
+		dbInit()
+		Connection conn = DriverManager.getConnection(
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
+
+		Statement stmt = conn.createStatement()
+
+		def sql = "SELECT id FROM leads"
+		ResultSet rs = stmt.executeQuery(sql)
+		rs.beforeFirst()
+
+		def leads = []
+		while (rs.next()) {
+			leads.add(rs.getLong('id'))
+		}
+
+		conn.close()
+		return leads
+	}
+
+
 	def static dbGetLead(id) {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
 
@@ -472,7 +570,7 @@ class common_db {
 	def static dbPutLead(id) {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		def user = dbGetUser(id)
 		def success = false
@@ -495,7 +593,7 @@ class common_db {
 	def static dbQueueLeadsBatchSize() {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
 
@@ -512,7 +610,7 @@ class common_db {
 	def static dbLeadQueueCompleted(id) {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
 		def sql = "UPDATE leads SET last_queued = now() WHERE id = " + id
@@ -525,7 +623,7 @@ class common_db {
 	def static dbGetInfluencers() {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
 
@@ -551,7 +649,7 @@ class common_db {
 	def static dbFollower (id) {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
 
@@ -563,23 +661,25 @@ class common_db {
 
 
 	def static dbUnfollower (id) {
-		dbInit()
-		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+		if (dbAlreadyFollower(id)) {
+			dbInit()
+			Connection conn = DriverManager.getConnection(
+							"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
-		Statement stmt = conn.createStatement()
+			Statement stmt = conn.createStatement()
 
-		def sql = "UPDATE followers_log SET unfollowed_on = now() WHERE id=${id}"
+			def sql = "UPDATE followers_log SET unfollowed_on = now() WHERE id=${id} AND unfollowed_on IS NULL"
 
-		stmt.executeUpdate(sql)
-		conn.close()
+			stmt.executeUpdate(sql)
+			conn.close()
+		}
 	}
 
 
 	def static dbAllFollowers() {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
 		def sql = "SELECT id FROM followers_log WHERE unfollowed_on IS NULL"
@@ -599,7 +699,7 @@ class common_db {
 	def static dbAlreadyFollower(id) {
 		dbInit()
 		Connection conn = DriverManager.getConnection(
-						dbUrl + "?user=" + dbUser + "&password=" + dbPassword)
+						"${dbUrl}?useSSL=false&user=${dbUser}&password=${dbPassword}")
 
 		Statement stmt = conn.createStatement()
 		def sql = "SELECT followed_on FROM followers_log WHERE id = ${id} AND unfollowed_on IS NULL"
